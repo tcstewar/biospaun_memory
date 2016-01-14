@@ -1,0 +1,15 @@
+_n_neurons = 1000
+_D = 8
+_max_rate = 80
+_stim_mag = 1
+_neuron_noise = 0.01
+_synapse_memory = 0.1
+_backend = 'nengo'
+_dt = 0.001
+_seed = 26
+_hide_overlay = False
+_gui = False
+choice_noise = 0.21904401634217235
+rmse = 0.027868027921451058
+sim_speed = 0.8823099578031359
+values = [0.6581484247246264, 0.4778424038582585, 0.2895529586324483, 0.1732149003771903]
