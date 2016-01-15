@@ -22,11 +22,11 @@ def task_plot_neurons():
         import pylab
         pylab.show()
     return dict(actions=[plot], verbosity=2)
-        
+
 def task_fit():
     def fit():
         data = ctn_benchmark.Data('data')
-        n_neurons = 1000
+        n_neurons = 200
         for d in data.data[:]:
             if d['_n_neurons'] != n_neurons:
                 data.data.remove(d)
@@ -35,12 +35,17 @@ def task_fit():
 
         import scipy.stats
         def prob(x, noise=1.0):
-            return scipy.stats.norm.cdf(x/noise)
+            return scipy.stats.norm.cdf(np.array(x)/noise)
         def curve(x, noise):
             return np.mean([prob(d['values'], noise=noise) for d in data.data], axis=0)
 
         import scipy.optimize
         p, err = scipy.optimize.curve_fit(curve, np.arange(3), target_data)
+
+        import pylab
+        pylab.plot([2,4,6,8], target_data)
+        pylab.plot([2,4,6,8], curve(None, *p))
+        pylab.show()
 
         print p, err
     return dict(actions=[fit], verbosity=2)
