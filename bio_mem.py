@@ -12,6 +12,7 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
         self.default('stimulus strength', stim_mag=1)
         self.default('amount of neuron noise', neuron_noise=0.01)
         self.default('recurrent synapse', synapse_memory=0.1)
+        self.default('number of averages', averages=1)
 
     def model(self, p):
         model = nengo.Network()
@@ -34,28 +35,50 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
             self.p_mem = nengo.Probe(memory, synapse=0.1, sample_every=0.5)
         return model
 
-    def evaluate(self, p, sim, plt):
-        sim.run(9)
-        self.record_speed(9)
+    def evaluate_model(self, p, Simulator, model, plt):
+        averages=2     #how to input this as a parameter?
+        model_data=[]
+        rng = np.random.RandomState(seed=p.seed)
+        for a in range(averages):
+            model.seed=rng.randint(0x7FFFFFFF)
+            sim = Simulator(model, seed=rng.randint(0x7FFFFFFF))
+            sim.run(9)  #need to set a new seed
+            model_data.append(sim.data[self.p_mem][[5,9,13,17],0])
+            print model_data[-1]
+        self.record_speed(9*averages)
 
-        values = sim.data[self.p_mem][[5,9,13,17],0]   # model data
-        data = [0.97, 0.94, 0.91, 0.80]                # experimental data
+        mean_values = np.mean(model_data, axis=0)   # model data
+        std_values = np.std(model_data, axis=0)
+        print mean_values, std_values
+        exp_values = [0.97, 0.94, 0.91, 0.80]  # experimental data
+
+
+        ci = np.array([ctn_benchmark.stats.bootstrapci(d, np.mean) for d in np.array(model_data).T])
+        print ci
 
         def curve(x, noise):
-            return scipy.stats.norm.cdf(values/noise)
+            return scipy.stats.norm.cdf(x/noise)
 
-        p, err = scipy.optimize.curve_fit(curve, np.arange(3), data)
+        p, err = scipy.optimize.curve_fit(curve, mean_values, exp_values)
         
-        rmse = np.sqrt(np.mean((curve(0, *p)-data)**2))
+        rmse = np.sqrt(np.mean((curve(mean_values, *p)-exp_values)**2))
 
         if plt is not None:
-            plt.plot([2,4,6,8], curve(0, *p), label='model ($\sigma$=%0.2f)' % p[0])
-            plt.plot([2,4,6,8], data, label='exp')
+            plt.fill_between([2,4,6,8], curve(ci[:,0], *p), curve(ci[:,1], *p), color='#aaaaaa')
+            plt.plot([2,4,6,8], curve(mean_values, *p), label='model ($\sigma$=%0.2f)' % p[0])
+            plt.plot([2,4,6,8], exp_values, label='exp')
+            #plt.plot([2,4,6,8], curve(ci[:,0], *p), lw=3)
+            #plt.plot([2,4,6,8], curve(ci[:,1], *p), lw=3)
+
+            #for d in model_data:
+            #    plt.plot([2,4,6,8], curve(d, *p))
+
+
             plt.legend(loc='best')
         
         return dict(rmse=rmse, 
                     choice_noise=p[0],
-                    values=values.tolist())
+                    values=mean_values.tolist())
 
 if __name__ == '__main__':
     BioSpaunMemory().run()
