@@ -1,0 +1,16 @@
+_n_neurons = 500
+_D = 64
+_max_rate = 80
+_stim_mag = 1.4
+_neuron_noise = 0.01
+_synapse_memory = 1.6
+_averages = 2
+_mean_mem_noise = -0.005
+_dataset = 'pre_PHE'
+_noise_readout = 0.1
+_backend = 'nengo'
+_dt = 0.001
+_seed = 1
+_hide_overlay = False
+_gui = False
+rmse = 0.088014474914446833

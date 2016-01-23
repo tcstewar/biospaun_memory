@@ -16,6 +16,7 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
         self.default('mean memory noise', mean_mem_noise=0.0)
         self.default('empirical dataset', dataset='pre_PHE')
         self.default('noise of memory estimation', noise_readout=0.1) #near the optimized value
+        self.default('plot type', plot_type='all')
 
     def model(self, p):
         model = nengo.Network()
@@ -90,27 +91,34 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
             # plt.fill_between([2,4,6,8], curve(ci[:,0], *p), curve(ci[:,1], *p), color='#aaaaaa')
             # plt.plot([2,4,6,8], curve(mean_values, *p), label='model_data ($\sigma$=%0.2f)' % p[0])
 
-            # plt.fill_between([2,4,6,8], curve(ci[:,0], p.noise_readout), curve(ci[:,1], p.noise_readout), color='#aaaaaa')
-            # plt.plot([2,4,6,8], curve(mean_values, p.noise_readout), label='model_data (RMSE=%0.2f)' % rmse)
-            # plt.plot([2,4,6,8], exp_data, label='exp_data')
-            # plt.xlabel('time (s)')
-            # plt.ylabel('percent correct')
-            # plt.ylim(0.6)
-            # plt.legend(loc='best')
+            plt.figure(1)
+            plt.fill_between([2,4,6,8], ci[:,0], ci[:,1], color='#aaaaaa')
+            plt.plot([2,4,6,8], mean_values, label='model_data')
+            plt.xlabel("time (s)")
+            plt.ylabel("integrator value")
+            plt.ylim(0,p.stim_mag)
+            plt.legend(loc='best')
+            values=mean_values
 
-            # plt.fill_between([2,4,6,8], ci[:,0], ci[:,1], color='#aaaaaa')
-            # plt.plot([2,4,6,8], mean_values)
-            # plt.xlabel("time (s)")
-            # plt.ylabel("integrator value")
-            # plt.ylim(0,1)
-
+            plt.figure(2)
             plt.plot(sim.trange(),smoothed_pos, label='preferred direction')
             plt.plot(sim.trange(),smoothed_neg, label='nonpreferred direction')
             plt.xlabel('time (s)')
             plt.ylabel('normalized firing rate')
             plt.legend(loc='best')
+            values=np.array(0)
 
-        return rmse     #p[0],)
+            plt.figure(4)
+            plt.fill_between([2,4,6,8], curve(ci[:,0], p.noise_readout), curve(ci[:,1], p.noise_readout), color='#aaaaaa')
+            plt.plot([2,4,6,8], curve(mean_values, p.noise_readout), label='model_data (RMSE=%0.2f)' % rmse)
+            plt.plot([2,4,6,8], exp_data, label='exp_data')
+            plt.xlabel('time (s)')
+            plt.ylabel('percent correct')
+            plt.ylim(0.6)
+            plt.legend(loc='best')
+            values=curve(mean_values, p.noise_readout)
+
+        return dict(rmse=rmse,values=values.tolist(),)
 
 if __name__ == '__main__':
     BioSpaunMemory().run()
