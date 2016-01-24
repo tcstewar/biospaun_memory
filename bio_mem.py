@@ -17,12 +17,16 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
         self.default('empirical dataset', dataset='pre_PHE')
         self.default('noise of memory estimation', noise_readout=0.1) #near the optimized value
         self.default('plot type', plot_type='all')
+        self.default('misperception prob', misperceive=0.0)
 
     def model(self, p):
         model = nengo.Network()
         model.config[nengo.Ensemble].max_rates = nengo.dists.Uniform(p.max_rate/2, 
                                                                      p.max_rate)
         with model:
+
+            #the 'give a shit' or misperception probability
+            print np.random.rand()
             stim = nengo.Node(lambda t: p.stim_mag if 0<t<1 else 0)
 
             sensory = nengo.Ensemble(n_neurons=100, dimensions=1)
