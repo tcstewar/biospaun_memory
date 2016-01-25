@@ -3,6 +3,7 @@ import nengo
 import scipy.optimize
 import scipy.stats
 import numpy as np
+import time
 
 class BioSpaunMemory(ctn_benchmark.Benchmark):
     def params(self):
@@ -30,9 +31,10 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
             sensory = nengo.Ensemble(n_neurons=100, dimensions=1)
 
             memory = nengo.Ensemble(n_neurons=p.n_neurons, dimensions=p.D)
-            memory.noise = nengo.processes.WhiteNoise(
-                                            dist=nengo.dists.Gaussian(mean=p.mean_mem_noise, 
-                                                   std=p.neuron_noise))
+            
+            bias_node = nengo.Node(1)
+            nengo.Connection(bias_node, memory.neurons, 
+                             transform=[[p.mean_mem_noise]] * p.n_neurons)
 
             nengo.Connection(p.stim, sensory, synapse=None)
             # nengo.Connection(sensory, memory[0], synapse=0.01)
@@ -50,6 +52,11 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
         model_data=[]
         spikes_preferred=[]
         spikes_nonpreferred=[]
+        num_wrong = 0
+
+        if p.seed == 0:
+            p.seed = int(time.time())
+
         rng = np.random.RandomState(seed=p.seed)
         for a in range(p.averages):
             model.seed=rng.randint(0x7FFFFFFF)
@@ -57,6 +64,7 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
             wrong=np.random.rand()
             if wrong < p.misperceive:
                 # p.stim.output = lambda t: -p.stim_mag if 0<t<1 else 0
+                num_wrong += 1
                 p.stim.output = lambda t: 0 if 0<t<1 else 0
             else:
                 p.stim.output = lambda t: p.stim_mag if 0<t<1 else 0
@@ -73,10 +81,24 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
 
         self.record_speed(9*p.averages)
         mean_values = np.mean(model_data, axis=0)   # model data
+        ci_values = np.array([ctn_benchmark.stats.bootstrapci(d, np.mean) 
+                              for d in np.array(model_data).T])
 
-        ###
-        mean_bias = 0.0
-        ###
+        def curve(x, noise):
+            return scipy.stats.norm.cdf((x)/noise)
+
+        ####################
+        print "WRONG: %i of %i, %f" % (num_wrong, p.averages, 1.0 * num_wrong / p.averages)
+
+        model_results = []
+        for data in model_data:
+            model_results.append(curve(data, p.noise_readout))
+
+        mean_results = np.mean(model_results, axis=0)
+
+        ci_results = np.array([ctn_benchmark.stats.bootstrapci(d, np.mean) 
+                               for d in np.array(model_results).T])
+        ####################
 
         avg_pref=np.mean(np.hstack(spikes_preferred), axis=1)
         avg_nonpref=np.mean(np.hstack(spikes_nonpreferred), axis=1)
@@ -87,7 +109,6 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
             'post_GFC' : [0.966, 0.928, 0.906, 0.838],
             }
         exp_data=exp_data_dict[str(p.dataset)]
-        ci = np.array([ctn_benchmark.stats.bootstrapci(d, np.mean) for d in np.array(model_data).T])
         dt = 0.001
         sigma = 0.01   #width of smoothing gaussian
         t_h = np.arange(200)*dt-0.1
@@ -96,11 +117,8 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
         smoothed_pos=np.convolve(avg_pref,h,mode='same') #convolve with gaussian
         smoothed_neg=np.convolve(avg_nonpref,h,mode='same') 
 
-        def curve(x, noise):
-            return scipy.stats.norm.cdf((x - mean_bias)/noise)
-
-        rmse = np.sqrt(np.mean((curve(mean_values, p.noise_readout)-exp_data)**2))
-        values=np.array([mean_values,curve(mean_values, p.noise_readout)])
+        rmse = np.sqrt(np.mean(mean_results-exp_data)**2)
+        values=np.array([mean_values, mean_results])
         # p, err = scipy.optimize.curve_fit(curve, mean_values, exp_data)
         # rmse = np.sqrt(np.mean((curve(mean_values, *p)-exp_data)**2))
 
@@ -109,7 +127,7 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
             # plt.plot([2,4,6,8], curve(mean_values, *p), label='model_data ($\sigma$=%0.2f)' % p[0])
 
             plt.figure(1)
-            plt.fill_between([2,4,6,8], ci[:,0], ci[:,1], color='#aaaaaa')
+            plt.fill_between([2,4,6,8], ci_values[:,0], ci_values[:,1], color='#aaaaaa')
             plt.plot([2,4,6,8], mean_values, label='model_data')
             plt.xlabel("time (s)")
             plt.ylabel("integrator value")
@@ -124,8 +142,8 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
             plt.legend(loc='best')
 
             plt.figure(4)
-            plt.fill_between([2,4,6,8], curve(ci[:,0], p.noise_readout), curve(ci[:,1], p.noise_readout), color='#aaaaaa')
-            plt.plot([2,4,6,8], curve(mean_values, p.noise_readout), label='model_data (RMSE=%0.2f)' % rmse)
+            plt.fill_between([2,4,6,8], ci_results[:,0], ci_results[:,1], color='#aaaaaa')
+            plt.plot([2,4,6,8], mean_results, label='model_data (RMSE=%0.2f)' % rmse)
             plt.plot([2,4,6,8], exp_data, label='exp_data')
             plt.xlabel('time (s)')
             plt.ylabel('percent correct')
