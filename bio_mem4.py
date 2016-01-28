@@ -4,6 +4,7 @@ import scipy.optimize
 import scipy.stats
 
 import nengo
+from nengo.networks import EnsembleArray
 import ctn_benchmark
 from ctn_benchmark.stats import bootstrapci
 
@@ -25,6 +26,7 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
         self.default('noise of memory estimation', noise_readout=0.35)
         self.default('misperception prob', misperceive=0.07)
         self.default('simulation time', simtime=10.0)
+        self.default('ramp input scale', ramp_scale=0.1)
 
     def model(self, p):
         model = nengo.Network()
@@ -33,9 +35,10 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
 
         with model:
             stim = nengo.Node(lambda t: 1 if 0 < t < 1 else 0)
-            ramp = nengo.Node()
+            # ramp = nengo.Node(lambda t: 0 if t < 1 else (t - 1.0) / p.simtime)
+            ramp = nengo.Node(lambda t: t > 1)
 
-            sensory = nengo.Ensemble(n_neurons=100, dimensions=1)
+            sensory = EnsembleArray(n_neurons=100, n_ensembles=p.D)
 
             memory = nengo.Ensemble(n_neurons=p.n_neurons, dimensions=p.D)
             memory.noise = \
@@ -43,15 +46,21 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
                     dist=nengo.dists.Gaussian(mean=p.neuron_bias,
                                               std=p.neuron_noise))
 
-            nengo.Connection(stim, sensory, synapse=None)
-            nengo.Connection(sensory, memory[0], synapse=p.synapse_memory,
+            nengo.Connection(stim, sensory.input[0], synapse=None)
+            nengo.Connection(ramp, sensory.input[1], synapse=None)
+            nengo.Connection(sensory.output[0], memory[0],
+                             synapse=p.synapse_memory,
                              transform=p.stim_mag * p.synapse_memory)
+            nengo.Connection(sensory.output[1], memory[1],
+                             synapse=p.synapse_memory,
+                             transform=p.synapse_memory * p.ramp_scale)
 
             nengo.Connection(memory, memory, synapse=p.synapse_memory,
                              transform=p.memory_decay)
 
             self.p_mem = nengo.Probe(memory, synapse=0.1, sample_every=0.5)
             self.p_mem2 = nengo.Probe(memory, synapse=0.1, sample_every=0.1)
+            self.p_r = nengo.Probe(ramp)
         return model
 
     def get_exp_data(self, dataset):
@@ -114,7 +123,7 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
         print "DONE PROCESSING INT VALUES"
 
         if plt is not None:
-            plt.subplot(2, 1, 1)
+            plt.subplot(3, 1, 1)
             plt.fill_between([2, 4, 6, 8], ci_0_model_results,
                              ci_1_model_results, color='#aaaaaa')
             plt.plot([2, 4, 6, 8], curve_results,
@@ -122,12 +131,17 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
             plt.plot([2, 4, 6, 8], exp_data, label='exp data')
             plt.legend(loc='best')
 
-            plt.subplot(2, 1, 2)
+            plt.subplot(3, 1, 2)
             plt.fill_between(sim.trange(self.p_mem2.sample_every),
                              ci_integrator_values[:, 0],
                              ci_integrator_values[:, 1], color='#aaaaaa')
             plt.plot(sim.trange(self.p_mem2.sample_every),
                      mean_integrator_values)
+
+            plt.subplot(3, 1, 3)
+            plt.plot(sim.trange(self.p_mem2.sample_every),
+                     sim.data[self.p_mem2])
+            plt.plot(sim.trange(), sim.data[self.p_r])
 
         print "DONE PLOTTING"
 
