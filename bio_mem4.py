@@ -14,7 +14,7 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
         self.default('number of neurons', n_neurons=4000)
         self.default('number of dimensions', D=2)
         self.default('maximum firing rate', max_rate=80)
-        self.default('stimulus strength', stim_mag=4)
+        self.default('stimulus strength', stim_mag=4.0)
         self.default('amount of neuron noise', neuron_noise=0.005)
         self.default('additive bias', neuron_bias=0.0)  # 0.0002, -0.0006
         self.default('recurrent synapse', synapse_memory=0.1)
@@ -27,15 +27,15 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
         self.default('misperception prob', misperceive=0.07)
         self.default('simulation time', simtime=10.0)
         self.default('ramp input scale', ramp_scale=0.1)
+        self.default('analyze spike data', analyze_spikes=False)
 
-    def model(self, p):
+    def model(self, p, probe_spikes=False):
         model = nengo.Network()
         model.config[nengo.Ensemble].max_rates = \
             nengo.dists.Uniform(p.max_rate / 2, p.max_rate)
 
         with model:
             stim = nengo.Node(lambda t: 1 if 0 < t < 1 else 0)
-            # ramp = nengo.Node(lambda t: 0 if t < 1 else (t - 1.0) / p.simtime)
             ramp = nengo.Node(lambda t: t > 1)
 
             sensory = EnsembleArray(n_neurons=100, n_ensembles=p.D)
@@ -60,7 +60,9 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
 
             self.p_mem = nengo.Probe(memory, synapse=0.1, sample_every=0.5)
             self.p_mem2 = nengo.Probe(memory, synapse=0.1, sample_every=0.1)
-            self.p_r = nengo.Probe(ramp)
+
+            if probe_spikes:
+                self.p_spikes = nengo.Probe(memory.neurons)
         return model
 
     def get_exp_data(self, dataset):
@@ -81,11 +83,12 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
             p.seed = int(time.time())
 
         def curve(x, noise, ignore):
-            return (scipy.stats.norm.cdf(x / noise) * (1 - p.misperceive)
-                    + 0.5 * p.misperceive)
+            return (scipy.stats.norm.cdf(x / noise) * (1 - ignore)
+                    + 0.5 * ignore)
 
         for trial in range(p.n_trials):
-            model = self.model(p)
+            model = self.model(p, probe_spikes=(trial == (p.n_trials - 1) and
+                                                p.analyze_spikes))
             model.seed = p.seed + trial
 
             sim = nengo.Simulator(model)
@@ -122,8 +125,38 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
 
         print "DONE PROCESSING INT VALUES"
 
+        if p.analyze_spikes:
+            spike_data = sim.data[self.p_spikes]
+            smoothed_spike_data = np.zeros(spike_data.shape)
+            print smoothed_spike_data.shape
+
+            sigma = 0.02
+            t_width = 0.2
+            t_h = np.arange(t_width / p.dt) * p.dt - t_width / 2.0
+            h = np.exp(-t_h ** 2 / (2 * sigma ** 2))
+            h = h / np.linalg.norm(h, 1)
+
+            t_interest = [sim.trange() > 1.5]
+            nn_interest = []
+
+            for nn in range(spike_data.shape[1]):
+                smoothed_data = np.convolve(spike_data[:, nn], h, mode='same')
+                smoothed_spike_data[:, nn] = smoothed_data
+
+                smoothed_interest = smoothed_spike_data[:, nn][t_interest]
+                deriv = np.mean(np.diff(smoothed_interest) / p.dt)
+
+                # preferred direction maybe?
+                if np.mean(smoothed_interest) > 30 and deriv > 0 and \
+                   deriv < 0.5:
+                    nn_interest.append(nn)
+
+            print "DONE PROCESSING SPIKES, %d" % len(nn_interest)
+
         if plt is not None:
-            plt.subplot(3, 1, 1)
+            num_plots = 3 + p.analyze_spikes
+
+            plt.subplot(num_plots, 1, 1)
             plt.fill_between([2, 4, 6, 8], ci_0_model_results,
                              ci_1_model_results, color='#aaaaaa')
             plt.plot([2, 4, 6, 8], curve_results,
@@ -131,17 +164,24 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
             plt.plot([2, 4, 6, 8], exp_data, label='exp data')
             plt.legend(loc='best')
 
-            plt.subplot(3, 1, 2)
+            plt.subplot(num_plots, 1, 2)
             plt.fill_between(sim.trange(self.p_mem2.sample_every),
                              ci_integrator_values[:, 0],
                              ci_integrator_values[:, 1], color='#aaaaaa')
             plt.plot(sim.trange(self.p_mem2.sample_every),
                      mean_integrator_values)
 
-            plt.subplot(3, 1, 3)
+            plt.subplot(num_plots, 1, 3)
             plt.plot(sim.trange(self.p_mem2.sample_every),
                      sim.data[self.p_mem2])
-            plt.plot(sim.trange(), sim.data[self.p_r])
+
+            if p.analyze_spikes and len(nn_interest) > 0:
+                print ">>", nn_interest[0], \
+                    np.mean(smoothed_spike_data[:, nn_interest[0]][t_interest])
+                plt.subplot(num_plots, 1, 4)
+                plt.plot(sim.trange(), smoothed_spike_data[:, nn_interest[0]])
+            if p.analyze_spikes and len(nn_interest) <= 0:
+                print "NO SPIKES TO PLOT"
 
         print "DONE PLOTTING"
 
