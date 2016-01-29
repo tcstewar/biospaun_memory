@@ -234,7 +234,7 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
                 enc = encoder_data[self.get_dataset_name('pre', p.drug_name)
                                    ][nn, :]
 
-                plt.subplot(len(nn_interest_post) + 1, 1, ii + 1)
+                plt.subplot(len(nn_interest_post), 1, ii + 1)
                 plt.plot(sim.trange(),
                          smoothed_data_pre[:, nn])
                 plt.plot(sim.trange(),
@@ -242,10 +242,10 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
                 plt.legend(['pre_%s' % p.drug_name,
                             'post_%s' % p.drug_name])
                 plt.xlabel('Spike rates - enc: %s' % str(enc))
+                print "E>", str(enc)
 
             # Mean smoothed rates
-            plt.subplot(len(nn_interest_post) + 1, 1,
-                        len(nn_interest_post) + 1)
+            plt.figure(figsize=(16, 8))
             plt.plot(sim.trange(),
                      np.mean(smoothed_data_pre[:, nn_interest_post], axis=1))
             plt.plot(sim.trange(),
@@ -258,7 +258,6 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
 
         return dict(choice_noise=cp[0],
                     ignore=cp[1],
-                    values=values.tolist(),
                     seed=p.seed)
 
 if __name__ == '__main__':
