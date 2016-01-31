@@ -30,8 +30,8 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
 
         self.default('min preferred encoder value', min_pref_enc=0.0)
         self.default('max preferred encoder value', max_pref_enc=1.0)
-        self.default('min nonpreferred encoder value', min_nonpref_enc=0.0)
-        self.default('max nonpreferred encoder value', max_nonpref_enc=-1.0)
+        self.default('min nonpreferred encoder value', min_nonpref_enc=-1.0)
+        self.default('max nonpreferred encoder value', max_nonpref_enc=0.0)
 
         self.default('FIND: Smoothed spike pattern with this minimum slope',
                      find_min_deriv=0.0)
@@ -160,29 +160,6 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
         else:
             cp = [p.noise_readout, p.misperceive]
 
-        if plt is not None:
-            for prefix in ['pre', 'post']:
-                dataset = self.get_dataset_name(prefix, p.drug_name)
-                curve_result = curve(model_results[dataset], *cp)
-
-                plt.subplot(2, 1, 1)
-                plt.plot([2, 4, 6, 8], curve_result)
-                plt.plot([2, 4, 6, 8], exp_data[dataset], '--')
-                plt.legend(['pre_%s model' % p.drug_name,
-                            'pre_%s data' % p.drug_name,
-                            'post_%s model' % p.drug_name,
-                            'post_%s data' % p.drug_name])
-                plt.title('Accuracy')
-
-                plt.subplot(2, 1, 2)
-                plt.plot(sim.trange(self.p_mem2.sample_every),
-                         integrator_values[dataset])
-                plt.legend(['pre_%s[0]' % p.drug_name,
-                            'pre_%s[1]' % p.drug_name,
-                            'post_%s[0]' % p.drug_name,
-                            'post_%s[1]' % p.drug_name])
-                plt.title('Integrator value')
-
         # Process pre/post drug spike data
         find_min_deriv_pre = p.find_min_deriv
         find_max_deriv_pre = p.find_max_deriv
@@ -261,70 +238,97 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
         print "number of chosen nonpreferred neurons, pre and post >>", \
           len(nn_interest_pre_nonpreferred), len(nn_interest_post_nonpreferred)
 
-        if len(nn_interest_post_preferred) > 0:
-            # plt.figure(figsize=(16, 8))
-            # for ii, nn in enumerate(nn_interest_post_preferred):
-            #     enc = encoder_data[self.get_dataset_name('pre', p.drug_name)
-            #                        ][nn, :]
-            #     plt.subplot(len(nn_interest_post_preferred), 1, ii + 1)
-            #     plt.plot(sim.trange(),
-            #              smoothed_data_pre[:, nn])
-            #     plt.plot(sim.trange(),
-            #              smoothed_data_post[:, nn])
-            #     plt.legend(['pre_%s' % p.drug_name,
-            #                 'post_%s' % p.drug_name])
-            #     plt.xlabel('Spike rates - enc: %s' % str(enc))
-            #     print "E>", str(enc)
+        if plt is not None:
+            for prefix in ['pre', 'post']:
+                dataset = self.get_dataset_name(prefix, p.drug_name)
+                curve_result = curve(model_results[dataset], *cp)
 
-            # Mean smoothed rates for preferred direction neurons
-            plt.figure(figsize=(16, 8))
-            plt.plot(sim.trange(),
-                     np.mean(smoothed_data_pre[:, nn_interest_post_preferred], axis=1),
-                     color='b',linewidth=2.0, label='Control')
-            plt.plot(sim.trange(),
-                     np.mean(smoothed_data_post[:, nn_interest_post_preferred], axis=1),
-                     color='r',linewidth=2.0, label='%s' % p.drug_name)
-            plt.fill_between([0.0,1.0],np.array([0.0,0.0]), \
-                np.array([plt.ylim()[1],plt.ylim()[1]]), color='#aaaaaa') #throws a known error
-            plt.legend(loc='lower right')
-            label_xticks = ['Cue','Delay','2','4','6','8']
-            plt.xticks([0.5,1.5,3,5,7,9],label_xticks)
-            plt.xlim(0,9)
-            plt.xlabel('time (s)')
-            plt.ylabel('Normalized Firing Rate')
-            plt.title('Preferred Direction')
+                plt.subplot(2, 1, 1)
+                plt.plot([2, 4, 6, 8], curve_result)
+                plt.plot([2, 4, 6, 8], exp_data[dataset], '--')
+                plt.legend(['pre_%s model' % p.drug_name,
+                            'pre_%s data' % p.drug_name,
+                            'post_%s model' % p.drug_name,
+                            'post_%s data' % p.drug_name])
+                plt.title('Accuracy')
 
-        if len(nn_interest_post_nonpreferred) > 0:
-            # plt.figure(figsize=(16, 8))
-            # for ii, nn in enumerate(nn_interest_post_nonpreferred):
-            #     enc = encoder_data[self.get_dataset_name('pre', p.drug_name)
-            #                        ][nn, :]
-            #     plt.subplot(len(nn_interest_post_nonpreferred), 1, ii + 1)
-            #     plt.plot(sim.trange(),
-            #              smoothed_data_pre[:, nn])
-            #     plt.plot(sim.trange(),
-            #              smoothed_data_post[:, nn])
-            #     plt.legend(['pre_%s' % p.drug_name,
-            #                 'post_%s' % p.drug_name])
-            #     plt.xlabel('Spike rates - enc: %s' % str(enc))
-            #     print "E>", str(enc)
+                plt.subplot(2, 1, 2)
+                plt.plot(sim.trange(self.p_mem2.sample_every),
+                         integrator_values[dataset])
+                plt.legend(['pre_%s[0]' % p.drug_name,
+                            'pre_%s[1]' % p.drug_name,
+                            'post_%s[0]' % p.drug_name,
+                            'post_%s[1]' % p.drug_name])
+                plt.title('Integrator value')
+                
+            thefontsize=48
+            thelinewidth=7
+            if len(nn_interest_post_preferred) > 0:
+                # plt.figure(figsize=(16, 8))
+                # for ii, nn in enumerate(nn_interest_post_preferred):
+                #     enc = encoder_data[self.get_dataset_name('pre', p.drug_name)
+                #                        ][nn, :]
+                #     plt.subplot(len(nn_interest_post_preferred), 1, ii + 1)
+                #     plt.plot(sim.trange(),
+                #              smoothed_data_pre[:, nn])
+                #     plt.plot(sim.trange(),
+                #              smoothed_data_post[:, nn])
+                #     plt.legend(['pre_%s' % p.drug_name,
+                #                 'post_%s' % p.drug_name])
+                #     plt.xlabel('Spike rates - enc: %s' % str(enc))
+                #     print "E>", str(enc)
 
-            # Mean smoothed rates for nonpreferred direction neurons
-            plt.figure(figsize=(16, 8))
-            plt.plot(sim.trange(),
-                     np.mean(smoothed_data_pre[:, nn_interest_post_nonpreferred], axis=1),
-                     color='b',linewidth=2.0, label='Control')
-            plt.plot(sim.trange(),
-                     np.mean(smoothed_data_post[:, nn_interest_post_nonpreferred], axis=1),
-                     color='r',linewidth=2.0, label='%s' % p.drug_name)
-            plt.fill_between([0,1],[0,0],[plt.ylim()[1],plt.ylim()[1]], color='gray')
-            plt.legend(loc='lower right')
-            label_xticks = ['Cue','Delay','2','4','6','8']
-            plt.xticks([0.5,1.5,3,5,7,9],label_xticks)
-            plt.xlim(0,9)
-            plt.xlabel('time (s)')
-            plt.ylabel('Normalized Firing Rate')
-            plt.title('Nonpreferred Direction')
+                # Mean smoothed rates for preferred direction neurons
+                plt.figure(figsize=(16, 8))
+                plt.plot(sim.trange(),
+                         np.mean(smoothed_data_pre[:, nn_interest_post_preferred], axis=1),
+                         color='b',linewidth=thelinewidth, label='Control')
+                plt.plot(sim.trange(),
+                         np.mean(smoothed_data_post[:, nn_interest_post_preferred], axis=1),
+                         color='r',linewidth=thelinewidth, label='%s' % p.drug_name)
+                plt.fill_between([0.0,1.0],np.array([0.0,0.0]), \
+                    np.array([plt.ylim()[1],plt.ylim()[1]]), color='#aaaaaa') #throws a known error
+                plt.legend(loc='lower right',fontsize=thefontsize)
+                label_xticks = ['Cue','Delay','2','4','6','8']
+                plt.xticks([0.5,2,3,5,7,9],label_xticks,fontsize=thefontsize)
+                plt.yticks(fontsize=thefontsize)
+                plt.xlim(0,9)
+                # plt.xlabel('time (s)',fontsize=thefontsize)
+                plt.ylabel('Normalized Firing Rate',fontsize=thefontsize)
+                # plt.title('Preferred Direction',fontsize=thefontsize)
+
+            if len(nn_interest_post_nonpreferred) > 0:
+                # plt.figure(figsize=(16, 8))
+                # for ii, nn in enumerate(nn_interest_post_nonpreferred):
+                #     enc = encoder_data[self.get_dataset_name('pre', p.drug_name)
+                #                        ][nn, :]
+                #     plt.subplot(len(nn_interest_post_nonpreferred), 1, ii + 1)
+                #     plt.plot(sim.trange(),
+                #              smoothed_data_pre[:, nn])
+                #     plt.plot(sim.trange(),
+                #              smoothed_data_post[:, nn])
+                #     plt.legend(['pre_%s' % p.drug_name,
+                #                 'post_%s' % p.drug_name])
+                #     plt.xlabel('Spike rates - enc: %s' % str(enc))
+                #     print "E>", str(enc)
+
+                # Mean smoothed rates for nonpreferred direction neurons
+                plt.figure(figsize=(16, 8))
+                plt.plot(sim.trange(),
+                         np.mean(smoothed_data_pre[:, nn_interest_post_nonpreferred], axis=1),
+                         color='b',linewidth=thelinewidth, label='Control')
+                plt.plot(sim.trange(),
+                         np.mean(smoothed_data_post[:, nn_interest_post_nonpreferred], axis=1),
+                         color='r',linewidth=thelinewidth, label='%s' % p.drug_name)
+                plt.fill_between([0,1],[0,0],[plt.ylim()[1],plt.ylim()[1]], color='#aaaaaa')
+                plt.legend(loc='lower right',fontsize=thefontsize)
+                label_xticks = ['Cue','Delay','2','4','6','8']
+                plt.xticks([0.5,2,3,5,7,9],label_xticks,fontsize=thefontsize)
+                plt.yticks(fontsize=thefontsize)
+                plt.xlim(0,9)
+                # plt.xlabel('time (s)',fontsize=thefontsize)
+                plt.ylabel('Normalized Firing Rate',fontsize=thefontsize)
+                # plt.title('Nonpreferred Direction',fontsize=thefontsize)
 
         print "S>", p.seed
 
