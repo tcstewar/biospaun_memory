@@ -28,7 +28,8 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
         self.default('number of neurons', n_neurons=4000)
         self.default('number of dimensions', D=2)
         self.default('maximum firing rate', max_rate=80)
-        self.default('stimulus strength', stim_mag=1.4)
+        self.default('normalized firing rate', norm_rate=20)
+        self.default('stimulus strength', stim_mag=1.2 * 2.0)
         self.default('ramp input scale', ramp_scale=0.18)
         self.default('recurrent synapse', synapse_memory=0.1)
 
@@ -73,6 +74,8 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
         self.default('misperception prob', misperceive=0.066)
 
         self.default('simulation time', simtime=10.0)
+        self.default('stim time', stimtime=0.5)
+        self.default('plot time', plottime=3.0)
 
     def model(self, p):
         model = nengo.Network()
@@ -80,8 +83,8 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
             nengo.dists.Uniform(p.max_rate / 2, p.max_rate)
 
         with model:
-            stim = nengo.Node(lambda t: 1 if 0 < t < 1 else 0)
-            ramp = nengo.Node(lambda t: t > 1)
+            stim = nengo.Node(lambda t: 1 if 0 < t < p.stimtime else 0)
+            ramp = nengo.Node(lambda t: t > p.stimtime)
 
             sensory = EnsembleArray(n_neurons=100, n_ensembles=p.D)
 
@@ -294,6 +297,10 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
                             'post_%s[1]' % p.drug_name])
                 plt.title('Integrator value')
 
+            # "Normalize" firing rate data
+            smoothed_data_pre *= 1.0 * p.norm_rate / p.max_rate
+            smoothed_data_post *= 1.0 * p.norm_rate / p.max_rate
+
             thefontsize = 48
             thelinewidth = 7
             if len(nn_interest_post_preferred) > 0:
@@ -313,23 +320,28 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
 
                 # Mean smoothed rates for preferred direction neurons
                 plt.figure(figsize=(16, 8))
-                plt.plot(sim.trange(),
+                plt.plot(sim.trange() - p.stimtime,
                          np.mean(smoothed_data_pre[:, nn_interest_post_preferred], axis=1),  # noqa
                          color='b', linewidth=thelinewidth, label='Control')
-                plt.plot(sim.trange(),
+                plt.plot(sim.trange() - p.stimtime,
                          np.mean(smoothed_data_post[:,
                                                     nn_interest_post_preferred], axis=1),  # noqa
                          color='r', linewidth=thelinewidth,
                          label='%s' % p.drug_name)
-                plt.fill_between([0.0, 1.0], np.array([0.0, 0.0]),
-                                 np.array([plt.ylim()[1], plt.ylim()[1]]),
-                                 color='#aaaaaa')  # throws a known error
+                plt.fill_between([-p.stimtime, 0.0], [0, 0],
+                                 [plt.ylim()[1], plt.ylim()[1]],
+                                 color='darkgray')
+                plt.fill_between([0.0, p.plottime - p.stimtime], [0, 0],
+                                 [plt.ylim()[1], plt.ylim()[1]],
+                                 color='lightgray')
                 plt.legend(loc='lower right', fontsize=thefontsize)
-                label_xticks = ['Cue', 'Delay', '2', '4', '6', '8']
-                plt.xticks([0.5, 2, 3, 5, 7, 9], label_xticks,
-                           fontsize=thefontsize)
+                label_xticks = ['Cue', '0.0', 'Delay',
+                                str(p.plottime - p.stimtime)]
+                plt.xticks([-0.3, 0.0, 1.25, p.plottime - p.stimtime],
+                           label_xticks, fontsize=thefontsize)
                 plt.yticks(fontsize=thefontsize)
-                plt.xlim(0, 9)
+                plt.xlim(-p.stimtime, p.plottime - p.stimtime)
+                plt.ylim(0, 15)
                 # plt.xlabel('time (s)',fontsize=thefontsize)
                 plt.ylabel('Normalized Firing Rate', fontsize=thefontsize)
                 # plt.title('Preferred Direction',fontsize=thefontsize)
@@ -351,22 +363,27 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
 
                 # Mean smoothed rates for nonpreferred direction neurons
                 plt.figure(figsize=(16, 8))
-                plt.plot(sim.trange(),
+                plt.plot(sim.trange() - p.stimtime,
                          np.mean(smoothed_data_pre[:, nn_interest_post_nonpreferred], axis=1),  # noqa
                          color='b', linewidth=thelinewidth, label='Control')
-                plt.plot(sim.trange(),
+                plt.plot(sim.trange() - p.stimtime,
                          np.mean(smoothed_data_post[:, nn_interest_post_nonpreferred], axis=1),  # noqa
                          color='r', linewidth=thelinewidth,
                          label='%s' % p.drug_name)
-                plt.fill_between([0, 1], [0, 0],
+                plt.fill_between([-p.stimtime, 0.0], [0, 0],
                                  [plt.ylim()[1], plt.ylim()[1]],
-                                 color='#aaaaaa')
+                                 color='darkgray')
+                plt.fill_between([0.0, p.plottime - p.stimtime], [0, 0],
+                                 [plt.ylim()[1], plt.ylim()[1]],
+                                 color='lightgray')
                 plt.legend(loc='lower right', fontsize=thefontsize)
-                label_xticks = ['Cue', 'Delay', '2', '4', '6', '8']
-                plt.xticks([0.5, 2, 3, 5, 7, 9], label_xticks,
-                           fontsize=thefontsize)
+                label_xticks = ['Cue', '0.0', 'Delay',
+                                str(p.plottime - p.stimtime)]
+                plt.xticks([-0.3, 0.0, 1.25, p.plottime - p.stimtime],
+                           label_xticks, fontsize=thefontsize)
                 plt.yticks(fontsize=thefontsize)
-                plt.xlim(0, 9)
+                plt.xlim(-p.stimtime, p.plottime - p.stimtime)
+                plt.ylim(0, 15)
                 # plt.xlabel('time (s)',fontsize=thefontsize)
                 plt.ylabel('Normalized Firing Rate', fontsize=thefontsize)
                 # plt.title('Nonpreferred Direction',fontsize=thefontsize)

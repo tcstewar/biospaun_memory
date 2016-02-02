@@ -14,20 +14,21 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
         self.default('number of neurons', n_neurons=4000)
         self.default('number of dimensions', D=2)
         self.default('maximum firing rate', max_rate=80)
-        self.default('stimulus strength', stim_mag=4.0)
-        self.default('amount of neuron noise', neuron_noise=0.005)
+        self.default('stimulus strength', stim_mag=5.0)
+        self.default('amount of neuron noise', neuron_noise=0.008)
         self.default('additive bias', neuron_bias=0.0)  # 0.0002, -0.0006
         self.default('recurrent synapse', synapse_memory=0.1)
         self.default('memory feedback decay value', memory_decay=1.0)
         self.default('do curve fitting', do_fit=False)
-        self.default('number of trials to average over', n_trials=1)
+        self.default('number of trials to average over', n_trials=20)
         self.default('empirical dataset', dataset='pre_PHE')
         self.default('plot type', plot_type='all')
-        self.default('noise of memory estimation', noise_readout=0.35)
-        self.default('misperception prob', misperceive=0.07)
+        self.default('noise of memory estimation', noise_readout=0.39)
+        self.default('misperception prob', misperceive=0.035)
         self.default('simulation time', simtime=10.0)
-        self.default('ramp input scale', ramp_scale=0.1)
+        self.default('ramp input scale', ramp_scale=0.2)
         self.default('analyze spike data', analyze_spikes=False)
+        self.default('stim time', stimtime=0.5)
 
     def model(self, p, probe_spikes=False):
         model = nengo.Network()
@@ -35,8 +36,8 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
             nengo.dists.Uniform(p.max_rate / 2, p.max_rate)
 
         with model:
-            stim = nengo.Node(lambda t: 1 if 0 < t < 1 else 0)
-            ramp = nengo.Node(lambda t: t > 1)
+            stim = nengo.Node(lambda t: 1 if 0 < t < p.stimtime else 0)
+            ramp = nengo.Node(lambda t: t > p.stimtime)
 
             sensory = EnsembleArray(n_neurons=100, n_ensembles=p.D)
 
