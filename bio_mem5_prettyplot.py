@@ -60,8 +60,8 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
             nengo.dists.Uniform(p.max_rate / 2, p.max_rate)
 
         with model:
-            stim = nengo.Node(lambda t: 1 if 0 < t < 1 else 0)
-            ramp = nengo.Node(lambda t: t > 1)
+            stim = nengo.Node(lambda t: 1 if 0 < t < 0.5 else 0)
+            ramp = nengo.Node(lambda t: t > 0.5)
 
             sensory = EnsembleArray(n_neurons=100, n_ensembles=p.D)
 
@@ -261,23 +261,9 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
                             'post_%s[1]' % p.drug_name])
                 plt.title('Integrator value')
                 
-            thefontsize=48
+            thefontsize=42
             thelinewidth=7
             if len(nn_interest_post_preferred) > 0:
-                # plt.figure(figsize=(16, 8))
-                # for ii, nn in enumerate(nn_interest_post_preferred):
-                #     enc = encoder_data[self.get_dataset_name('pre', p.drug_name)
-                #                        ][nn, :]
-                #     plt.subplot(len(nn_interest_post_preferred), 1, ii + 1)
-                #     plt.plot(sim.trange(),
-                #              smoothed_data_pre[:, nn])
-                #     plt.plot(sim.trange(),
-                #              smoothed_data_post[:, nn])
-                #     plt.legend(['pre_%s' % p.drug_name,
-                #                 'post_%s' % p.drug_name])
-                #     plt.xlabel('Spike rates - enc: %s' % str(enc))
-                #     print "E>", str(enc)
-
                 # Mean smoothed rates for preferred direction neurons
                 plt.figure(figsize=(16, 8))
                 plt.plot(sim.trange(),
@@ -286,32 +272,19 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
                 plt.plot(sim.trange(),
                          np.mean(smoothed_data_post[:, nn_interest_post_preferred], axis=1),
                          color='r',linewidth=thelinewidth, label='%s' % p.drug_name)
-                plt.fill_between([0.0,1.0],np.array([0.0,0.0]), \
-                    np.array([plt.ylim()[1],plt.ylim()[1]]), color='#aaaaaa') #throws a known error
+                plt.fill_between([0.0,0.5],[0,0],[plt.ylim()[1],plt.ylim()[1]], color='darkgray')
+                plt.fill_between([0.5,3.0],[0,0],[plt.ylim()[1],plt.ylim()[1]], color='lightgray')
                 plt.legend(loc='lower right',fontsize=thefontsize)
-                label_xticks = ['Cue','Delay','2','4','6','8']
-                plt.xticks([0.5,2,3,5,7,9],label_xticks,fontsize=thefontsize)
+                label_xticks = ['Cue','0.5','Delay','3']
+                plt.xticks([0.2,0.5,1.75,3],label_xticks,fontsize=thefontsize)
                 plt.yticks(fontsize=thefontsize)
-                plt.xlim(0,9)
+                plt.xlim(0,3)
+                plt.ylim(0,15)
                 # plt.xlabel('time (s)',fontsize=thefontsize)
                 plt.ylabel('Normalized Firing Rate',fontsize=thefontsize)
                 # plt.title('Preferred Direction',fontsize=thefontsize)
 
             if len(nn_interest_post_nonpreferred) > 0:
-                # plt.figure(figsize=(16, 8))
-                # for ii, nn in enumerate(nn_interest_post_nonpreferred):
-                #     enc = encoder_data[self.get_dataset_name('pre', p.drug_name)
-                #                        ][nn, :]
-                #     plt.subplot(len(nn_interest_post_nonpreferred), 1, ii + 1)
-                #     plt.plot(sim.trange(),
-                #              smoothed_data_pre[:, nn])
-                #     plt.plot(sim.trange(),
-                #              smoothed_data_post[:, nn])
-                #     plt.legend(['pre_%s' % p.drug_name,
-                #                 'post_%s' % p.drug_name])
-                #     plt.xlabel('Spike rates - enc: %s' % str(enc))
-                #     print "E>", str(enc)
-
                 # Mean smoothed rates for nonpreferred direction neurons
                 plt.figure(figsize=(16, 8))
                 plt.plot(sim.trange(),
@@ -320,12 +293,14 @@ class BioSpaunMemory(ctn_benchmark.Benchmark):
                 plt.plot(sim.trange(),
                          np.mean(smoothed_data_post[:, nn_interest_post_nonpreferred], axis=1),
                          color='r',linewidth=thelinewidth, label='%s' % p.drug_name)
-                plt.fill_between([0,1],[0,0],[plt.ylim()[1],plt.ylim()[1]], color='#aaaaaa')
+                plt.fill_between([0.0,0.5],[0,0],[plt.ylim()[1],plt.ylim()[1]], color='darkgray')
+                plt.fill_between([0.5,3.0],[0,0],[plt.ylim()[1],plt.ylim()[1]], color='lightgray')
                 plt.legend(loc='lower right',fontsize=thefontsize)
-                label_xticks = ['Cue','Delay','2','4','6','8']
-                plt.xticks([0.5,2,3,5,7,9],label_xticks,fontsize=thefontsize)
+                label_xticks = ['Cue','0.5','Delay','3']
+                plt.xticks([0.2,0.5,1.75,3],label_xticks,fontsize=thefontsize)
                 plt.yticks(fontsize=thefontsize)
-                plt.xlim(0,9)
+                plt.xlim(0,3)
+                plt.ylim(0,15)
                 # plt.xlabel('time (s)',fontsize=thefontsize)
                 plt.ylabel('Normalized Firing Rate',fontsize=thefontsize)
                 # plt.title('Nonpreferred Direction',fontsize=thefontsize)
